@@ -1,0 +1,70 @@
+# Portable CloudFormation template that deploys an EC2 instance with Apache
+# Public SSM Parameters: https://docs.aws.amazon.com/systems-manager/latest/userguide/parameter-store-public-parameters-ami.html
+# Public SSM Paramaters 2: https://docs.aws.amazon.com/systems-manager/latest/userguide/parameter-store-finding-public-parameters.html
+
+
+Parameters:
+  LatestAmiId:
+    Description: "AMI for EC2"
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+  KeyName:
+    Type: "AWS::EC2::KeyPair::KeyName"
+    Description: "Key Pair for EC2"
+  UserDataMessage:
+    Description: "Message for HTML page"
+    Default: "Your EC2 With Apache Successfully Deployed"
+    Type: "String"
+Resources:
+  InstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH and HTTP access via port 22 IPv4 & port 80 IPv4
+      SecurityGroupIngress:
+        - Description: 'Allow SSH IPv4 IN'
+          IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: '0.0.0.0/0'
+        - Description: 'Allow HTTP IPv4 IN'
+          IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: '0.0.0.0/0'
+  Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: "t2.micro"
+      ImageId: !Ref "LatestAmiId"
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      KeyName: !Ref "KeyName"
+      Tags:
+        - Key: Name
+          Value: Base-Config-Apache-Instance
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          yum -y update
+          yum -y upgrade
+          yum install -y httpd
+          systemctl enable httpd
+          systemctl start httpd
+          echo "<html><head><title>Apache Website</title></head><body><h1><center>${UserDataMessage}</center></h1></body></html>" > /var/www/html/index.html
+
+Outputs:
+  PublicIp:
+    Description: Server Public IP
+    Value: !GetAtt Instance.PublicIp
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicIp"
+  PublicDnsName:
+    Description: Server Public DNS Name
+    Value: !GetAtt Instance.PublicDnsName
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicDnsName"
+  AvailabilityZone:
+    Description: Server Availability Zone
+    Value: !GetAtt Instance.AvailabilityZone
+    Export:
+      Name: !Sub "${AWS::StackName}-AvailabilityZone"
