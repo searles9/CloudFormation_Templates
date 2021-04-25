@@ -8,6 +8,9 @@ Parameters:
     Description: "AMI for EC2"
     Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
     Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+  SubnetId:
+    Description: "Subnet ID"
+    Type: 'AWS::EC2::Subnet::Id'
   KeyName:
     Type: "AWS::EC2::KeyPair::KeyName"
     Description: "Key Pair for EC2"
@@ -36,8 +39,9 @@ Resources:
     Properties:
       InstanceType: "t2.micro"
       ImageId: !Ref "LatestAmiId"
+      SubnetId: !Ref "SubnetId"
       SecurityGroupIds:
-        - !Ref InstanceSecurityGroup
+        - !GetAtt InstanceSecurityGroup.GroupId
       KeyName: !Ref "KeyName"
       Tags:
         - Key: Name
@@ -63,6 +67,11 @@ Outputs:
     Value: !GetAtt Instance.PublicDnsName
     Export:
       Name: !Sub "${AWS::StackName}-PublicDnsName"
+  PrivateIp:
+    Description: Server Private IP
+    Value: !GetAtt Instance.PrivateIp
+    Export:
+      Name: !Sub "${AWS::StackName}-PrivateIp"
   AvailabilityZone:
     Description: Server Availability Zone
     Value: !GetAtt Instance.AvailabilityZone
